@@ -1,0 +1,126 @@
+{
+  "product": "CloudAPI - Nền tảng API thanh toán & tích hợp",
+  "language": "vi",
+  "chunks": [
+    {
+      "id": "DOC-AUTH-001",
+      "category": "auth",
+      "title": "Xác thực bằng API Key",
+      "content": "Mọi request tới CloudAPI phải được xác thực bằng API key gửi trong header 'Authorization: Bearer <API_KEY>'. API key được tạo trong Dashboard tại mục Settings > API Keys. Mỗi tài khoản có thể tạo tối đa 10 API key. Key bị lộ phải được thu hồi (revoke) ngay lập tức để tránh truy cập trái phép."
+    },
+    {
+      "id": "DOC-AUTH-002",
+      "category": "auth",
+      "title": "Xoay vòng (rotate) API Key",
+      "content": "Để xoay vòng API key, vào Dashboard > Settings > API Keys, nhấn 'Rotate'. Hệ thống sinh key mới và giữ key cũ hoạt động thêm 24 giờ (grace period) để bạn cập nhật ứng dụng. Sau 24 giờ, key cũ tự động bị vô hiệu hóa. Nên xoay vòng key định kỳ mỗi 90 ngày theo khuyến nghị bảo mật."
+    },
+    {
+      "id": "DOC-AUTH-003",
+      "category": "auth",
+      "title": "Phân quyền theo scope",
+      "content": "API key hỗ trợ scope để giới hạn quyền: 'read' (chỉ đọc), 'write' (tạo/sửa), và 'admin' (toàn quyền gồm quản lý webhook và billing). Một key chỉ nên cấp scope tối thiểu cần thiết. Request vượt scope sẽ trả về lỗi 403 Forbidden."
+    },
+    {
+      "id": "DOC-RATELIMIT-001",
+      "category": "ratelimit",
+      "title": "Giới hạn tần suất gói Free",
+      "content": "Tài khoản gói Free được phép tối đa 60 request mỗi phút (RPM). Khi vượt ngưỡng, API trả về mã 429 Too Many Requests kèm header 'Retry-After' cho biết số giây cần chờ. Bộ đếm rate limit reset theo cửa sổ trượt 60 giây."
+    },
+    {
+      "id": "DOC-RATELIMIT-002",
+      "category": "ratelimit",
+      "title": "Giới hạn tần suất gói Pro và Enterprise",
+      "content": "Gói Pro cho phép 600 request mỗi phút, gói Enterprise cho phép 6000 request mỗi phút và có thể nâng theo thỏa thuận. Các header 'X-RateLimit-Limit', 'X-RateLimit-Remaining' và 'X-RateLimit-Reset' luôn được trả về trong mọi response để client tự điều tiết."
+    },
+    {
+      "id": "DOC-WEBHOOK-001",
+      "category": "webhook",
+      "title": "Đăng ký Webhook",
+      "content": "Webhook cho phép CloudAPI gửi thông báo sự kiện tới endpoint của bạn. Đăng ký URL nhận webhook tại Dashboard > Developers > Webhooks. URL phải dùng HTTPS và phản hồi mã 2xx trong vòng 5 giây, nếu không hệ thống coi là thất bại."
+    },
+    {
+      "id": "DOC-WEBHOOK-002",
+      "category": "webhook",
+      "title": "Xác minh chữ ký Webhook",
+      "content": "Mỗi webhook gửi kèm header 'X-CloudAPI-Signature' là HMAC-SHA256 của payload dùng webhook secret. Ứng dụng phải tính lại HMAC và so sánh để chống giả mạo. Webhook secret xem tại trang cấu hình webhook và khác hoàn toàn với API key."
+    },
+    {
+      "id": "DOC-WEBHOOK-003",
+      "category": "webhook",
+      "title": "Cơ chế retry của Webhook",
+      "content": "Nếu endpoint không trả về 2xx, CloudAPI thử lại tối đa 5 lần với backoff lũy thừa: 1 phút, 5 phút, 30 phút, 2 giờ, 5 giờ. Sau 5 lần thất bại, sự kiện được đánh dấu 'failed' và có thể gửi lại thủ công từ Dashboard trong vòng 7 ngày."
+    },
+    {
+      "id": "DOC-SDK-001",
+      "category": "sdk",
+      "title": "Cài đặt SDK",
+      "content": "CloudAPI cung cấp SDK chính thức cho Python, Node.js và Go. Cài Python SDK bằng 'pip install cloudapi', Node.js bằng 'npm install @cloudapi/sdk'. SDK tự động xử lý retry, phân trang và xác thực. Yêu cầu Python 3.8+ hoặc Node.js 16+."
+    },
+    {
+      "id": "DOC-SDK-002",
+      "category": "sdk",
+      "title": "Khởi tạo client SDK",
+      "content": "Khởi tạo client bằng cách truyền API key: trong Python dùng 'client = CloudAPI(api_key=\"...\")'. Có thể đặt timeout (mặc định 30 giây) và số lần retry (mặc định 3). Không hardcode API key trong mã nguồn; nên đọc từ biến môi trường."
+    },
+    {
+      "id": "DOC-ERROR-001",
+      "category": "errors",
+      "title": "Mã lỗi HTTP thường gặp",
+      "content": "CloudAPI dùng mã HTTP chuẩn: 400 (request sai định dạng), 401 (thiếu/sai API key), 403 (không đủ quyền), 404 (không tìm thấy tài nguyên), 429 (vượt rate limit), 500 (lỗi máy chủ). Mỗi lỗi trả về JSON gồm 'error.code' và 'error.message'."
+    },
+    {
+      "id": "DOC-ERROR-002",
+      "category": "errors",
+      "title": "Idempotency để tránh trùng lặp",
+      "content": "Với các request tạo thanh toán, gửi header 'Idempotency-Key' là một chuỗi duy nhất. Nếu request được gửi lại với cùng key trong vòng 24 giờ, CloudAPI trả về kết quả của lần đầu thay vì tạo giao dịch mới, giúp tránh trừ tiền hai lần khi mạng chập chờn."
+    },
+    {
+      "id": "DOC-PAGE-001",
+      "category": "pagination",
+      "title": "Phân trang dựa trên cursor",
+      "content": "Các endpoint danh sách dùng phân trang cursor. Response chứa 'data' và 'next_cursor'. Truyền 'cursor=<next_cursor>' để lấy trang tiếp theo. Tham số 'limit' tối đa 100 bản ghi mỗi trang (mặc định 25). Khi 'next_cursor' là null nghĩa là đã hết dữ liệu."
+    },
+    {
+      "id": "DOC-VERSION-001",
+      "category": "versioning",
+      "title": "Phiên bản API",
+      "content": "CloudAPI gắn phiên bản theo ngày, ví dụ '2026-01-01', truyền trong header 'CloudAPI-Version'. Nếu không truyền, hệ thống dùng phiên bản mặc định gắn với tài khoản. Phiên bản cũ được hỗ trợ tối thiểu 12 tháng kể từ khi có phiên bản mới."
+    },
+    {
+      "id": "DOC-VERSION-002",
+      "category": "versioning",
+      "title": "Chính sách deprecation",
+      "content": "Khi một endpoint bị deprecate, CloudAPI thông báo trước tối thiểu 6 tháng qua email và changelog, đồng thời trả về header 'Deprecation: true' và 'Sunset: <ngày>'. Sau ngày sunset, endpoint trả về 410 Gone."
+    },
+    {
+      "id": "DOC-PAYMENT-001",
+      "category": "payment",
+      "title": "Tạo yêu cầu thanh toán",
+      "content": "Gọi POST /v1/payments với 'amount' (đơn vị nhỏ nhất, ví dụ đồng), 'currency' (mã ISO 4217 như VND, USD) và 'description'. Response trả về 'payment_id' và 'status' khởi tạo là 'pending'. Số tiền tối thiểu là 10000 VND."
+    },
+    {
+      "id": "DOC-PAYMENT-002",
+      "category": "payment",
+      "title": "Trạng thái thanh toán",
+      "content": "Thanh toán đi qua các trạng thái: 'pending' (đang chờ), 'succeeded' (thành công), 'failed' (thất bại), 'refunded' (đã hoàn tiền). Trạng thái thay đổi được thông báo qua webhook sự kiện 'payment.updated'. Không nên hỏi trạng thái bằng cách polling liên tục."
+    },
+    {
+      "id": "DOC-REFUND-001",
+      "category": "payment",
+      "title": "Hoàn tiền",
+      "content": "Hoàn tiền bằng POST /v1/refunds với 'payment_id'. Hỗ trợ hoàn một phần bằng cách truyền 'amount' nhỏ hơn tổng. Chỉ thanh toán ở trạng thái 'succeeded' mới hoàn được, và phải thực hiện trong vòng 180 ngày kể từ ngày giao dịch."
+    },
+    {
+      "id": "DOC-SECURITY-001",
+      "category": "security",
+      "title": "Mã hóa và lưu trữ dữ liệu",
+      "content": "Mọi dữ liệu truyền qua CloudAPI được mã hóa TLS 1.2 trở lên. Dữ liệu thẻ nhạy cảm tuân thủ chuẩn PCI DSS và không bao giờ được lưu ở dạng thô. CloudAPI không lưu CVV. Tài khoản nên bật xác thực hai yếu tố (2FA) cho Dashboard."
+    },
+    {
+      "id": "DOC-SANDBOX-001",
+      "category": "environment",
+      "title": "Môi trường Sandbox",
+      "content": "CloudAPI cung cấp môi trường sandbox tại 'https://sandbox.cloudapi.example' để thử nghiệm mà không phát sinh giao dịch thật. API key sandbox có tiền tố 'sk_test_'. Dùng số thẻ thử nghiệm trong tài liệu để mô phỏng các kịch bản thành công và thất bại."
+    }
+  ]
+}
