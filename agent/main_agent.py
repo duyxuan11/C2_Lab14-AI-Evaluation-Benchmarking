@@ -72,7 +72,7 @@ class MainAgent:
 
     def _get_client(self) -> AsyncOpenAI:
         if self._client is None:
-            self._client = AsyncOpenAI(api_key=_get_api_key(), base_url=GEMINI_BASE_URL)
+            self._client = AsyncOpenAI(api_key=_get_api_key(), base_url=GEMINI_BASE_URL, timeout=30.0)
         return self._client
 
     async def _with_retry(self, coro_fn):
@@ -82,7 +82,7 @@ class MainAgent:
                 return await coro_fn()
             except Exception as e:  # noqa: BLE001 - log rồi backoff, không sập cả batch
                 last_err = e
-                await asyncio.sleep(RETRY_BASE_DELAY * (attempt + 1))
+                await asyncio.sleep(1)  # Giảm tối đa thời gian chờ vì dùng API trả phí
         raise RuntimeError(f"Gọi Gemini API thất bại sau {MAX_RETRIES} lần: {last_err}")
 
     async def _ensure_ready(self):

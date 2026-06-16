@@ -17,7 +17,7 @@ REPORTS_DIR = Path("reports")
 SUMMARY_PATH = REPORTS_DIR / "summary.json"
 RESULTS_PATH = REPORTS_DIR / "benchmark_results.json"
 
-BATCH_SIZE = int(os.getenv("BENCHMARK_BATCH_SIZE", "5"))
+BATCH_SIZE = int(os.getenv("BENCHMARK_BATCH_SIZE", "10"))
 PERFORMANCE_TARGET_SECONDS = 120.0
 
 
@@ -160,7 +160,7 @@ class SafeJudge:
         result.setdefault("cost_usd", 0.0)
         result.setdefault(
             "mock_mode",
-            not (os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")),
+            not any(os.getenv(k) for k in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"]),
         )
         return result
 
