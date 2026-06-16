@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .DS_Store
 reports/
+data/.kb_embeddings_cache.json
+
