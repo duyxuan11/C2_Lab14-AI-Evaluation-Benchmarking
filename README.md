@@ -60,7 +60,12 @@ Báo cáo 5 Whys phải chỉ ra được lỗi nằm ở đâu: Ingestion pipel
 # 1. Cài đặt dependencies
 pip install -r requirements.txt
 
+# 1b. Cấu hình API key cho SDG (dùng Gemini qua endpoint tương thích OpenAI)
+#     Sao chép .env.example -> .env rồi điền GEMINI_API_KEY (lấy tại https://aistudio.google.com/apikey)
+cp .env.example .env
+
 # 2. Tạo Golden Dataset (chạy trước khi benchmark)
+#    -> đọc data/knowledge_base.json (corpus) và sinh data/golden_set.jsonl
 python data/synthetic_gen.py
 
 # 3. Chạy Benchmark & tạo reports
