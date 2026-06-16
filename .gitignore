@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 .DS_Store
 reports/
-data/golden_set.jsonl
+data/.kb_embeddings_cache.json
