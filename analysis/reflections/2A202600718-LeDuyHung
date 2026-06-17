@@ -1,0 +1,120 @@
+# Báo cáo cá nhân - Lê Duy Hùng
+
+## 1. Thông tin cá nhân
+
+- **Họ và tên:** Lê Duy Hùng
+- **Vai trò trong nhóm:** SV4 - Regression & Performance/Cost
+- **File phụ trách chính:** `main.py`
+- **Mục tiêu rubric liên quan:** Regression Testing, Performance, Cost Tracking, Release Gate
+
+## 2. Phần việc đã đảm nhận
+
+Trong Lab 14, phần việc của em là ghép các module của nhóm thành một pipeline benchmark hoàn chỉnh. Cụ thể, em phụ trách chạy đánh giá hai phiên bản agent là `Agent_V1_Base` và `Agent_V2_Optimized`, tổng hợp các chỉ số về chất lượng câu trả lời, retrieval, latency, token, cost, sau đó đưa ra quyết định release tự động thông qua regression gate.
+
+Em đã kết nối các thành phần chính của nhóm:
+
+- Dataset từ SV1: đọc file `data/golden_set.jsonl`, kiểm tra các trường bắt buộc như `question`, `expected_answer`, `context`, `expected_retrieval_ids`, `metadata`.
+- Agent và retrieval từ SV3: gọi `MainAgent.query()` để lấy `answer`, `contexts`, `retrieved_ids`, `tokens_used`.
+- Multi-judge từ SV2: gọi `LLMJudge.evaluate_multi_judge()` để lấy `final_score`, `agreement_rate`, `individual_scores`, `reasoning`.
+
+Bên cạnh đó, em bổ sung logic để benchmark không bị dừng toàn bộ khi một case bị lỗi. Nếu một case lỗi, hệ thống vẫn ghi lại `status = fail`, `error`, và các metric mặc định phù hợp. Điều này giúp quá trình benchmark vẫn tạo được report để nhóm phân tích sau.
+
+## 3. Đóng góp kỹ thuật
+
+### 3.1. Benchmark pipeline
+
+Em xây dựng luồng benchmark trong `main.py` theo từng test case:
+
+1. Đọc test case từ golden dataset.
+2. Gọi agent để sinh câu trả lời.
+3. Tính retrieval metrics dựa trên `expected_retrieval_ids` và `retrieved_ids`.
+4. Gọi LLM judge để chấm điểm câu trả lời.
+5. Lưu latency, token, cost, trạng thái pass/fail và metadata của từng case.
+
+Kết quả chi tiết được ghi vào:
+
+- `reports/benchmark_results.json`
+- `reports/summary.json`
+
+### 3.2. Retrieval metrics trong benchmark tổng
+
+Mặc dù SV3 đã có `RetrievalEvaluator`, em cần ghép metric này vào benchmark tổng để mỗi case đều có:
+
+- `hit_rate`: tài liệu đúng có nằm trong top-k retrieved documents hay không.
+- `mrr`: tài liệu đúng xuất hiện ở vị trí nào trong danh sách retrieval.
+
+Hai chỉ số này rất quan trọng vì nếu câu trả lời sai nhưng retrieval đã sai từ đầu, nguyên nhân gốc rễ nằm ở retrieval/chunking/embedding, không phải ở prompt generation. Ngược lại, nếu retrieval đúng nhưng answer vẫn sai, lỗi có thể nằm ở prompt, model generation hoặc cách agent sử dụng context.
+
+### 3.3. Performance và cost tracking
+
+Em bổ sung các metric tổng hợp để đánh giá hiệu năng và chi phí:
+
+- `avg_latency_sec`
+- `p95_latency_sec`
+- `avg_agent_latency_sec`
+- `avg_judge_latency_sec`
+- `total_tokens`
+- `agent_tokens`
+- `judge_tokens`
+- `total_cost_usd`
+- `cost_per_case_usd`
+- `cost_tracking_complete`
+
+Trong trường hợp agent hoặc judge chưa trả về `cost_usd`, em không tự gán chi phí ảo mà để `cost_tracking_complete = false`. Cách làm này giúp report trung thực hơn: hệ thống vẫn có khung đo cost, nhưng không khẳng định chi phí thật khi dữ liệu chưa đầy đủ.
+
+### 3.4. Regression release gate
+
+Em viết logic release gate để so sánh V1 và V2. Một phiên bản mới sẽ bị `BLOCK` nếu vi phạm các ngưỡng quan trọng:
+
+- Điểm judge trung bình giảm quá 0.10.
+- Hit Rate giảm quá 5 điểm phần trăm.
+- MRR giảm quá 5 điểm phần trăm.
+- Agreement Rate dưới 0.65.
+- Latency tăng hơn 30%.
+- Cost per case tăng hơn 30% mà chất lượng không cải thiện.
+- Không đạt mục tiêu performance: chạy 50+ cases trong vòng 2 phút.
+
+Nếu không vi phạm các điều kiện trên, release gate sẽ trả về `APPROVE`. Logic này giúp biến benchmark thành một quy trình có thể dùng trong release thực tế, không chỉ là một script in điểm.
+
+## 4. Kiến thức kỹ thuật rút ra
+
+### MRR
+
+MRR là viết tắt của Mean Reciprocal Rank, dùng để đo tài liệu đúng xuất hiện sớm hay muộn trong kết quả retrieval. Nếu tài liệu đúng đứng hạng 1, MRR = 1.0. Nếu đứng hạng 2, MRR = 0.5. Nếu không xuất hiện, MRR = 0. Chỉ số này bổ sung cho Hit Rate vì Hit Rate chỉ cho biết có lấy đúng tài liệu hay không, còn MRR cho biết ranking có tốt hay không.
+
+### Agreement Rate
+
+Agreement Rate giúp đo mức độ đồng thuận giữa các judge model. Nếu hai judge chấm điểm gần nhau, agreement cao; nếu lệch nhiều, agreement thấp. Chỉ số này quan trọng vì một judge đơn lẻ có thể bị bias hoặc chấm không ổn định. Khi dùng multi-judge consensus, nhóm có thể tin tưởng hơn vào điểm cuối cùng.
+
+### Trade-off giữa cost, latency và quality
+
+Trong hệ thống evaluation thực tế, model mạnh hơn không phải lúc nào cũng tốt hơn nếu chi phí và latency tăng quá cao. Vì vậy release gate cần nhìn đồng thời nhiều chỉ số: score, retrieval, latency, cost và agreement. Một bản V2 chỉ nên được release nếu chất lượng tăng hoặc ổn định trong khi chi phí và hiệu năng vẫn nằm trong ngưỡng chấp nhận được.
+
+## 5. Khó khăn gặp phải
+
+Khó khăn lớn nhất là các module của nhóm có output khác nhau và chưa cung cấp đầy đủ thông tin cho benchmark tổng. Ví dụ, agent có `tokens_used` nhưng chưa có `cost_usd`; judge có `final_score` và `agreement_rate` nhưng cost/token có thể chưa đầy đủ. Em giải quyết bằng cách thiết kế summary chấp nhận dữ liệu thiếu, nhưng có cờ `cost_tracking_complete` để báo cáo minh bạch.
+
+Một khó khăn khác là benchmark gọi nhiều API thật nên dễ bị chậm hoặc gặp rate limit. Em thêm batch size qua biến môi trường `BENCHMARK_BATCH_SIZE` để có thể chạy chậm hơn khi debug, ví dụ:
+
+```bash
+BENCHMARK_BATCH_SIZE=1 python main.py
+```
+
+Cách này giúp em dễ quan sát tiến độ hơn khi hệ thống chạy từng case hoặc từng batch nhỏ.
+
+## 6. Đề xuất cải tiến
+
+Nếu có thêm thời gian, em sẽ cải tiến tiếp các điểm sau:
+
+- Tạo hai cấu hình agent thật sự khác nhau cho V1 và V2, vì hiện tại hai version chủ yếu dùng chung `MainAgent`.
+- Tính `cost_usd` thật dựa trên model pricing và token usage.
+- Cache kết quả judge theo hash của `question + answer + expected_answer` để giảm chi phí khi chạy lại benchmark.
+- Chỉ gọi judge thứ hai cho case khó, case borderline hoặc case có điểm judge thứ nhất thấp.
+- Thêm timeout và log theo từng case để debug API latency dễ hơn.
+- Bổ sung dashboard hoặc bảng tổng hợp để SV5 dễ phân tích failure clustering và 5 Whys.
+
+## 7. Kết luận cá nhân
+
+Qua phần việc SV4, em hiểu rõ hơn rằng evaluation pipeline không chỉ là chấm điểm câu trả lời, mà là một hệ thống hỗ trợ quyết định release. Muốn quyết định có release agent mới hay không, cần đo được chất lượng câu trả lời, chất lượng retrieval, độ đồng thuận của judge, latency và chi phí. Phần regression gate giúp biến các metric riêng lẻ thành một quyết định có cơ sở: `APPROVE` nếu V2 an toàn để release, hoặc `BLOCK` nếu có dấu hiệu regression.
+
+Phần việc này cũng giúp em hiểu rõ hơn vai trò của AI evaluation trong quy trình AI Engineering thực tế. Một agent không chỉ cần trả lời đúng trong vài ví dụ, mà cần được kiểm thử có hệ thống trên nhiều nhóm case, bao gồm cả hard cases, adversarial prompts, out-of-context questions và multi-turn interactions.
